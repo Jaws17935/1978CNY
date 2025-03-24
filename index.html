@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>超光速交易終端</title>
+  <title>大草原計算機</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -262,16 +262,24 @@
       }
     }
 
-    // 處理貼上事件，自動分割數值
+    // 處理貼上事件，自動分割數值並複製結果
     function handlePaste(event) {
       event.preventDefault();
       const pastedText = (event.clipboardData || window.clipboardData).getData('text');
       const values = pastedText.trim().split(/\s+|\t/);
+      const isFirstField = event.target.id === "buyAmount";
 
       if (values.length >= 2) {
         elements.buyAmount.value = values[0];
         elements.sellAmount.value = values[1];
         calculateTrade();
+        
+        // 如果是貼上在第一欄，且計算結果有效，自動複製結果
+        if (isFirstField && elements.resultBox.value.trim()) {
+          navigator.clipboard.writeText(elements.resultBox.value)
+            .then(() => alert("複製成功"))
+            .catch(() => alert("複製失敗；檢視權限"));
+        }
       } else if (values.length === 1) {
         event.target.value = values[0];
         calculateTrade();
