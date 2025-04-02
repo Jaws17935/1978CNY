@@ -172,13 +172,13 @@
     <h1>〄 大草原計算機</h1>
     <button class="link-button" onclick="openRatePopup()">台銀</button>
     <div class="input-group">
-      <input type="number" id="buyAmount" step="0.001" 
-             oninput="handleInput(this, 'sellAmount')" 
+      <input type="number" id="buyAmount" step="0.01" 
+             oninput="calculateTrade()" 
              onkeydown="handleKey(event, 'sellAmount')"
              onpaste="handlePaste(event)"
              onclick="clearInput(this)">
-      <input type="number" id="sellAmount" step="0.001" 
-             oninput="handleInput(this, 'buyAmount')" 
+      <input type="number" id="sellAmount" step="0.01" 
+             oninput="calculateTrade()" 
              onkeydown="handleKey(event, 'buyAmount')"
              onpaste="handlePaste(event)"
              onclick="clearInput(this)">
@@ -196,106 +196,6 @@
       midPrice: document.getElementById("midPrice"),
       resultBox: document.getElementById("resultBox")
     };
-
-    // 初始化輸入元素
-    function setupInputs() {
-      // 為每個輸入欄位設置事件監聽器
-      [elements.buyAmount, elements.sellAmount].forEach(input => {
-        // 修正游標跳動問題
-        input.addEventListener('keyup', function(e) {
-          if (e.key === '.') {
-            const pos = this.value.indexOf('.') + 1;
-            setTimeout(() => this.setSelectionRange(pos, pos), 0);
-          }
-        });
-      });
-    }
-    
-    // 處理輸入和格式化
-    function handleInput(inputElement, nextInputId) {
-      // 記住目前的游標位置和字符
-      const cursorPosition = inputElement.selectionStart;
-      const currentChar = inputElement.value.charAt(cursorPosition - 1);
-      const isDecimalPoint = currentChar === '.';
-      
-      // 直接使用輸入值，不處理空白
-      let value = inputElement.value;
-      
-      // 檢查是否是正在輸入小數點的狀態
-      if (value.endsWith('.')) {
-        calculateTrade();
-        // 確保游標位置在小數點後
-        setTimeout(() => {
-          const pos = value.length;
-          inputElement.setSelectionRange(pos, pos);
-        }, 0);
-        return;
-      }
-      
-      // 檢查格式
-      if (value) {
-        // 判斷是否包含小數點但未完成輸入
-        const parts = value.split('.');
-        // 如果小數部分正在輸入中且長度小於3，不進行四捨五入
-        if (parts.length > 1 && parts[1].length < 3) {
-          calculateTrade();
-          
-          // 確保游標位置在正確位置
-          setTimeout(() => {
-            // 如果剛輸入小數點，確保游標在小數點後
-            if (isDecimalPoint) {
-              const dotPos = value.indexOf('.');
-              inputElement.setSelectionRange(dotPos + 1, dotPos + 1);
-            } else {
-              // 否則保持游標在當前位置
-              inputElement.setSelectionRange(cursorPosition, cursorPosition);
-            }
-          }, 0);
-          return;
-        }
-        
-        // 將輸入值轉換為數字並四捨五入到小數點後三位
-        const numValue = parseFloat(value);
-        if (!isNaN(numValue)) {
-          // 使用 Math.round 實現四捨五入到小數點後三位
-          const roundedValue = Math.round(numValue * 1000) / 1000;
-          
-          // 根據原始輸入決定如何格式化
-          let newValue;
-          if (parts.length > 1) {
-            // 保留小數點格式，但限制為3位
-            const decimalPlaces = Math.min(parts[1].length, 3);
-            newValue = roundedValue.toFixed(decimalPlaces);
-          } else {
-            // 無小數點
-            newValue = roundedValue.toString();
-          }
-          
-          // 更新輸入值
-          inputElement.value = newValue;
-          
-          // 設置游標位置
-          setTimeout(() => {
-            if (isDecimalPoint) {
-              // 如果剛剛輸入小數點，確保游標在小數點後
-              const newDotPos = newValue.indexOf('.');
-              if (newDotPos !== -1) {
-                inputElement.setSelectionRange(newDotPos + 1, newDotPos + 1);
-              } else {
-                // 如果沒有小數點（不太可能），放到尾部
-                inputElement.setSelectionRange(newValue.length, newValue.length);
-              }
-            } else {
-              // 否則保持在相對位置
-              const newPos = Math.min(cursorPosition, newValue.length);
-              inputElement.setSelectionRange(newPos, newPos);
-            }
-          }, 0);
-        }
-      }
-      
-      calculateTrade();
-    }
 
     // 計算交易並更新中價
     function calculateTrade() {
@@ -352,21 +252,13 @@
       );
     }
 
-    // 處理鍵盤事件
+    // 處理鍵盤事件，清空下一欄位
     function handleKey(event, nextId) {
-      // 按Enter鍵時，清空下一欄位並聚焦
       if (event.key === "Enter") {
         const nextElement = document.getElementById(nextId);
         nextElement.value = "";
         calculateTrade();
         nextElement.focus();
-      }
-      
-      // 按Backspace或Delete鍵時，清空當前欄位
-      if (event.key === "Backspace" || event.key === "Delete") {
-        event.preventDefault(); // 防止預設行為
-        event.target.value = "";
-        calculateTrade();
       }
     }
 
@@ -374,18 +266,13 @@
     function handlePaste(event) {
       event.preventDefault();
       const pastedText = (event.clipboardData || window.clipboardData).getData('text');
-      // 去除空白
-      const cleanText = pastedText.replace(/\s+/g, '');
-      // 使用任何空白字符或分隔符拆分
-      const values = cleanText.split(/[\s\t,;]+/).filter(v => v.trim() !== '');
+      const values = pastedText.trim().split(/\s+|\t/);
       const isFirstField = event.target.id === "buyAmount";
 
       if (values.length >= 2) {
         elements.buyAmount.value = values[0];
-        handleInput(elements.buyAmount, "sellAmount");
-        
         elements.sellAmount.value = values[1];
-        handleInput(elements.sellAmount, "buyAmount");
+        calculateTrade();
         
         // 如果是貼上在第一欄，且計算結果有效，自動複製結果
         if (isFirstField && elements.resultBox.value.trim()) {
@@ -395,7 +282,7 @@
         }
       } else if (values.length === 1) {
         event.target.value = values[0];
-        handleInput(event.target, event.target.id === "buyAmount" ? "sellAmount" : "buyAmount");
+        calculateTrade();
       }
     }
 
@@ -406,29 +293,7 @@
     }
 
     // 初始化
-    window.onload = function() {
-      calculateTrade();
-      
-      // 為了解決在輸入小數點時游標跳動的問題
-      [elements.buyAmount, elements.sellAmount].forEach(input => {
-        input.addEventListener('keydown', function(e) {
-          if (e.key === '.') {
-            // 標記已輸入小數點
-            this.dataset.justTypedDot = 'true';
-          }
-        });
-        
-        input.addEventListener('keyup', function(e) {
-          if (this.dataset.justTypedDot === 'true') {
-            const dotPos = this.value.indexOf('.');
-            if (dotPos !== -1) {
-              this.setSelectionRange(dotPos + 1, dotPos + 1);
-            }
-            this.dataset.justTypedDot = 'false';
-          }
-        });
-      });
-    };
+    calculateTrade();
   </script>
 </body>
 </html>
